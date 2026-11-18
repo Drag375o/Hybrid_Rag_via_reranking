@@ -65,7 +65,7 @@ flowchart TD
 | Reranker | [`cross-encoder/ms-marco-MiniLM-L-6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (swap in [`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base) for higher accuracy) | Precise relevance scoring |
 | LLM | [Ollama](https://ollama.com/) (default `qwen2.5:1.5b`; `qwen2.5:3b` or `qwen2.5:7b` give better answers if your hardware allows) | Writes the final answer |
 | UI | [Streamlit](https://streamlit.io/) | Chat interface with pipeline inspection |
-| Evaluation | [BEIR](https://github.com/beir-cellar/beir) benchmark (default: SciFact) | Measures retrieval quality |
+| Evaluation | [BEIR](https://github.com/beir-cellar/beir) benchmarks (SciFact, NFCorpus) | Measures retrieval quality |
 
 ---
 
@@ -228,16 +228,44 @@ Earlier results without the title header: [`eval/results/scifact_test_no_title_p
 - **The gains are small, and reranking is expensive.** Hybrid + rerank beats dense alone by 0.009 nDCG@10. On 300 questions, a gap that size may not be statistically meaningful, and the reranker makes each query about 13× slower (1029 vs 80 ms).
 - **Where hybrid search does help**: queries that hinge on exact strings like error codes, IDs, version numbers and rare names. In a spot check on this README, "Error 0x80070005" was ranked 3rd by dense search and 1st by hybrid. SciFact has few such queries, so it understates this benefit.
 
+### Results: BEIR NFCorpus (323 test questions, 3,633 documents)
+
+NFCorpus asks plain-language nutrition and health questions against medical paper abstracts full of specialist terms (drug names, conditions, nutrients). Unlike SciFact, BM25 and dense search are much closer here, which is when fusing them should pay off. Same settings as above:
+
+| Setup | nDCG@10 | MRR@10 | Recall@5 | Recall@10 | ms / query |
+|---|---|---|---|---|---|
+| Dense only | 0.348 | 0.536 | 0.129 | 0.164 | 18 |
+| BM25 only | 0.299 | 0.499 | 0.126 | 0.149 | 20 |
+| Hybrid (RRF) | 0.355 | 0.560 | 0.135 | **0.176** | 35 |
+| **Hybrid + rerank** | **0.359** | **0.578** | **0.138** | 0.167 | 1006 |
+
+Full output: [`eval/results/nfcorpus_test.md`](eval/results/nfcorpus_test.md).
+
+- **Here each stage helps.** Hybrid improves on dense alone in every metric (nDCG@10 +0.007, MRR@10 +0.024, Recall@10 +0.012), and reranking adds a little more at the top (MRR@10 0.578, the best). The gains are modest, but unlike SciFact they point consistently in the same direction.
+- **Low recall scores are expected on this dataset.** NFCorpus questions have dozens of relevant documents each, so even a perfect top 10 can only contain a small share of them.
+- **Our BM25 is a simple one.** It doesn't stem words (so "vitamins" won't match "vitamin"), which probably explains why it trails the published BEIR BM25 baseline (about 0.33 nDCG@10, from Elasticsearch with stemming). A stronger BM25 would likely make hybrid search more useful.
+
+### Overall
+
+| | SciFact nDCG@10 | NFCorpus nDCG@10 |
+|---|---|---|
+| Dense only | 0.717 | 0.348 |
+| Hybrid (RRF) | 0.716 | 0.355 |
+| **Hybrid + rerank** | **0.726** | **0.359** |
+
+Hybrid + rerank is the best setup on both benchmarks, but by small margins (+0.009 and +0.011 over dense alone), and the reranker makes each query 13–29× slower. When BM25 is much weaker than dense search (SciFact), fusion adds nothing. When the two are closer (NFCorpus), it helps.
+
 **Next experiments:**
-- A keyword-heavy benchmark (NFCorpus, in progress).
+- Stemming in BM25.
 - A stronger reranker (`BAAI/bge-reranker-base`).
 
 Reproduce with:
 
 ```bash
-python -m eval.run_eval              # all 300 questions (~6 min after a one-time ~8 min indexing)
-python -m eval.run_eval --limit 50   # quick check
-python -m eval.run_eval --rebuild    # re-index after changing chunking or models
+python -m eval.run_eval                       # SciFact, all 300 questions (~6 min after a one-time ~8 min indexing)
+python -m eval.run_eval --dataset nfcorpus    # NFCorpus, all 323 questions (~6 min after ~7 min indexing)
+python -m eval.run_eval --limit 50            # quick check
+python -m eval.run_eval --rebuild             # re-index after changing chunking or models
 ```
 
 Only full runs are meaningful. Small samples swing a lot: in a 20-question trial before the title change, hybrid + rerank came out on top, but the full 300 questions put it last.
@@ -257,4 +285,7 @@ Only full runs are meaningful. Small samples swing a lot: in a 20-question trial
 - [x] Streamlit UI with pipeline inspection
 - [x] Evaluation harness on a BEIR benchmark
 - [x] Results and analysis (SciFact)
-- [ ] Stronger reranker and a keyword-heavy benchmark
+- [x] Title header on every chunk
+- [x] Second benchmark (NFCorpus)
+- [ ] Stemming in BM25
+- [ ] Stronger reranker (`bge-reranker-base`)
