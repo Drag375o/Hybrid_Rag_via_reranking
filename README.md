@@ -133,14 +133,15 @@ The embedding and reranker models download automatically from Hugging Face on fi
 ```bash
 # Preview how your documents are loaded and chunked (put them in data/docs/ first)
 python -m hybrid_rag.ingestion --show 3
+
+# Build the dense (ChromaDB) and BM25 indexes from data/docs
+# (re-run after adding or changing documents; it rebuilds from scratch)
+python -m scripts.ingest
 ```
 
 > The commands below will work once the corresponding roadmap items are complete.
 
 ```bash
-# Ingest your own documents into the search indexes
-python -m scripts.ingest --path data/docs
-
 # Launch the chat UI
 streamlit run app/streamlit_app.py
 
@@ -172,8 +173,8 @@ Results will be published here once the harness is complete.
 - [x] Project plan and README
 - [x] Project scaffold (config, dependencies, `.gitignore`)
 - [x] Document ingestion and chunking
-- [ ] Dense index (ChromaDB + bge embeddings)
-- [ ] Sparse index (BM25)
+- [x] Dense index (ChromaDB + bge embeddings)
+- [x] Sparse index (BM25)
 - [ ] Hybrid retrieval with Reciprocal Rank Fusion
 - [ ] Cross-encoder reranking
 - [ ] Answer generation with Ollama and citations

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
 
     # --- Models ---
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # bge models retrieve better when short queries carry this instruction (passages don't)
+    embedding_query_prefix: str = "Represent this sentence for searching relevant passages: "
+    embedding_batch_size: int = Field(default=32, gt=0)
     reranker_model: str = "BAAI/bge-reranker-base"
     llm_model: str = "qwen2.5:7b"
     ollama_host: str = "http://localhost:11434"
