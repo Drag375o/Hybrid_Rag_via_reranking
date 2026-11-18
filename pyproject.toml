@@ -15,3 +15,4 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # lets tests import the top-level eval/ and scripts/ packages

@@ -17,9 +17,6 @@ ollama>=0.3.3
 # UI
 streamlit>=1.38
 
-# Evaluation (benchmark datasets from the Hugging Face Hub)
-datasets>=2.20
-
 # Development
 pytest>=8.3
 
