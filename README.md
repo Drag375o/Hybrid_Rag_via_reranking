@@ -130,10 +130,15 @@ The embedding and reranker models download automatically from Hugging Face on fi
 
 ### Usage
 
-> These commands will work once the corresponding roadmap items are complete.
+```bash
+# Preview how your documents are loaded and chunked (put them in data/docs/ first)
+python -m hybrid_rag.ingestion --show 3
+```
+
+> The commands below will work once the corresponding roadmap items are complete.
 
 ```bash
-# Ingest your own documents (put them in data/docs/ first)
+# Ingest your own documents into the search indexes
 python -m scripts.ingest --path data/docs
 
 # Launch the chat UI
@@ -166,7 +171,7 @@ Results will be published here once the harness is complete.
 
 - [x] Project plan and README
 - [x] Project scaffold (config, dependencies, `.gitignore`)
-- [ ] Document ingestion and chunking
+- [x] Document ingestion and chunking
 - [ ] Dense index (ChromaDB + bge embeddings)
 - [ ] Sparse index (BM25)
 - [ ] Hybrid retrieval with Reciprocal Rank Fusion
