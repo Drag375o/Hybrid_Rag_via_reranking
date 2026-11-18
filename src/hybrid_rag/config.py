@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # --- Chunking (sizes in characters) ---
     chunk_size: int = Field(default=800, gt=0)
     chunk_overlap: int = Field(default=120, ge=0)
+    # Repeat a document's title (when known) at the top of every chunk, so later
+    # chunks keep their context. Re-index after changing this.
+    chunk_title_prefix: bool = True
 
     # --- Retrieval ---
     dense_top_k: int = Field(default=50, gt=0)

@@ -197,36 +197,50 @@ Documents are chunked and indexed exactly like your own files. Each ranked chunk
 
 ### Results: BEIR SciFact (300 test questions, 5,183 documents)
 
-Run on a CPU-only laptop with `bge-small-en-v1.5` embeddings, the `ms-marco-MiniLM-L-6-v2` reranker and 800-character chunks:
+Run on a CPU-only laptop with `bge-small-en-v1.5` embeddings, the `ms-marco-MiniLM-L-6-v2` reranker and 800-character chunks, with each chunk starting with its paper's title (the default):
 
 | Setup | nDCG@10 | MRR@10 | Recall@5 | Recall@10 | ms / query |
 |---|---|---|---|---|---|
-| **Dense only** | **0.713** | **0.683** | 0.767 | 0.833 | 21 |
-| BM25 only | 0.631 | 0.592 | 0.709 | 0.771 | 37 |
-| Hybrid (RRF) | 0.711 | 0.677 | 0.755 | **0.838** | 59 |
-| Hybrid + rerank | 0.696 | 0.661 | **0.781** | 0.831 | 1030 |
+| Dense only | 0.717 | 0.685 | 0.761 | 0.842 | 28 |
+| BM25 only | 0.642 | 0.607 | 0.719 | 0.773 | 54 |
+| Hybrid (RRF) | 0.716 | 0.686 | 0.770 | 0.836 | 80 |
+| **Hybrid + rerank** | **0.726** | **0.696** | **0.779** | **0.850** | 1029 |
 
 Full output and configuration: [`eval/results/scifact_test.md`](eval/results/scifact_test.md).
 
+#### Effect of putting the title on every chunk (nDCG@10)
+
+Most SciFact abstracts are longer than one chunk. Without a title header, every chunk after the first reaches the embedder and the reranker with no indication of which paper it comes from.
+
+| Setup | Title on first chunk only | Title on every chunk | Change |
+|---|---|---|---|
+| Dense only | 0.713 | 0.717 | +0.004 |
+| BM25 only | 0.631 | 0.642 | +0.011 |
+| Hybrid (RRF) | 0.711 | 0.716 | +0.005 |
+| Hybrid + rerank | 0.696 | **0.726** | **+0.030** |
+
+Earlier results without the title header: [`eval/results/scifact_test_no_title_prefix.md`](eval/results/scifact_test_no_title_prefix.md).
+
 ### What the results show
 
-- **On SciFact, the full pipeline does not beat dense search alone.** SciFact pairs scientific claims with paper abstracts that usually paraphrase them, which is exactly what embeddings are good at. BM25 is clearly weaker here (0.631), so fusing it in leaves hybrid level with dense (0.711 vs 0.713). Giving dense search 1.5×–3× more weight in the fusion changed nDCG@10 by less than 0.01.
-- **The MiniLM reranker gives mixed results.** It surfaces more relevant documents in the top 5 (Recall@5 rises from 0.755 to 0.781), but orders the very top slightly worse (nDCG@10 falls from 0.711 to 0.696), and it makes each query about 17× slower. It was trained on MS MARCO web-search queries, which look very different from scientific claims.
+- **The cross-encoder benefits most from context.** Without the title header, the reranker made results *worse* than hybrid search (0.696 vs 0.711). With the title on every chunk, it is the best setup (0.726). The cross-encoder judges one chunk at a time, so a chunk that has lost its title is hard for it to place.
+- **Hybrid search adds little on SciFact.** SciFact pairs scientific claims with paper abstracts that usually paraphrase them, which is what embeddings handle well. BM25 is clearly weaker here (0.642 vs 0.717), so fusing it in leaves hybrid level with dense. Giving dense search 1.5×–3× more weight in the fusion changed nDCG@10 by less than 0.01.
+- **The gains are small, and reranking is expensive.** Hybrid + rerank beats dense alone by 0.009 nDCG@10. On 300 questions, a gap that size may not be statistically meaningful, and the reranker makes each query about 13× slower (1029 vs 80 ms).
 - **Where hybrid search does help**: queries that hinge on exact strings like error codes, IDs, version numbers and rare names. In a spot check on this README, "Error 0x80070005" was ranked 3rd by dense search and 1st by hybrid. SciFact has few such queries, so it understates this benefit.
 
 **Next experiments:**
+- A keyword-heavy benchmark (NFCorpus, in progress).
 - A stronger reranker (`BAAI/bge-reranker-base`).
-- A keyword-heavy benchmark.
-- Prefixing each chunk with its document title, so the reranker sees the title on every chunk of a paper, not just the first.
 
 Reproduce with:
 
 ```bash
 python -m eval.run_eval              # all 300 questions (~6 min after a one-time ~8 min indexing)
 python -m eval.run_eval --limit 50   # quick check
+python -m eval.run_eval --rebuild    # re-index after changing chunking or models
 ```
 
-Only the full run is meaningful. In a 20-question trial run, hybrid + rerank came out on top, which the full 300 questions did not confirm.
+Only full runs are meaningful. Small samples swing a lot: in a 20-question trial before the title change, hybrid + rerank came out on top, but the full 300 questions put it last.
 
 ---
 

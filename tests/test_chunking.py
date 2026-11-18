@@ -53,6 +53,32 @@ def test_overlap_must_be_smaller_than_size():
         split_text(PROSE, chunk_size=100, chunk_overlap=100)
 
 
+def test_title_is_repeated_on_every_chunk_within_size():
+    doc = Document(text=f"Hybrid Retrieval\n\n{PROSE}", source="paper", metadata={"title": "Hybrid Retrieval"})
+
+    chunks = chunk_documents([doc], chunk_size=300, chunk_overlap=50, title_prefix=True)
+
+    assert len(chunks) > 1
+    assert all(c.text.startswith("Hybrid Retrieval\n\n") for c in chunks)
+    assert all(len(c.text) <= 300 for c in chunks)
+    assert chunks[0].text.count("Hybrid Retrieval") == 1  # title in the text isn't doubled
+    assert set(words(PROSE)) <= set(" ".join(c.text for c in chunks).split())
+
+
+def test_title_prefix_is_skipped_without_title_or_when_disabled():
+    untitled = Document(text=PROSE, source="notes.txt")
+    titled = Document(text=PROSE, source="paper", metadata={"title": "Hybrid Retrieval"})
+
+    assert not chunk_documents([untitled], 300, 50, title_prefix=True)[1].text.startswith("Hybrid")
+    assert not chunk_documents([titled], 300, 50, title_prefix=False)[1].text.startswith("Hybrid")
+
+
+def test_overlong_title_falls_back_to_normal_splitting():
+    doc = Document(text=PROSE, source="paper", metadata={"title": "T" * 290})
+    chunks = chunk_documents([doc], chunk_size=300, chunk_overlap=50, title_prefix=True)
+    assert all(len(c.text) <= 300 for c in chunks) and not chunks[1].text.startswith("TTT")
+
+
 def test_chunk_documents_ids_and_metadata():
     docs = [
         Document(text=PROSE, source="paper.pdf", page=3, metadata={"title": "RAG"}),

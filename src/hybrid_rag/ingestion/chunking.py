@@ -68,20 +68,51 @@ def split_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
     return _merge(_split_recursive(text, SEPARATORS, chunk_size), chunk_size, chunk_overlap)
 
 
+def _split_with_title(doc: Document, chunk_size: int, chunk_overlap: int) -> list[str]:
+    """Split a document so every chunk starts with its title (when it has one).
+
+    Without this, only the first chunk of a document says what it is about, so
+    the embedder and reranker judge later chunks without that context. The title
+    counts towards ``chunk_size``; if it is too long to leave room for text, the
+    document is split normally instead.
+    """
+    title = str(doc.metadata.get("title") or "").strip()
+    header = f"{title}\n\n"
+    body_size = chunk_size - len(header)
+    if not title or body_size <= chunk_overlap:
+        return split_text(doc.text, chunk_size, chunk_overlap)
+
+    body = doc.text.strip()
+    if body.startswith(title):  # don't repeat a title the text already starts with
+        body = body[len(title):].lstrip()
+    return [header + part for part in split_text(body, body_size, chunk_overlap)] if body else [title]
+
+
 def chunk_documents(
     documents: Iterable[Document],
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
+    title_prefix: bool | None = None,
 ) -> list[Chunk]:
-    """Split Documents into Chunks with stable, human-readable ids."""
+    """Split Documents into Chunks with stable, human-readable ids.
+
+    With ``title_prefix`` (default: the ``chunk_title_prefix`` setting), documents
+    that have a ``title`` in their metadata get it at the top of every chunk.
+    """
     settings = get_settings()
     chunk_size = chunk_size or settings.chunk_size
     chunk_overlap = settings.chunk_overlap if chunk_overlap is None else chunk_overlap
+    title_prefix = settings.chunk_title_prefix if title_prefix is None else title_prefix
 
     chunks: list[Chunk] = []
     for doc in documents:
         prefix = f"{doc.source}::p{doc.page}" if doc.page is not None else doc.source
-        for index, text in enumerate(split_text(doc.text, chunk_size, chunk_overlap)):
+        texts = (
+            _split_with_title(doc, chunk_size, chunk_overlap)
+            if title_prefix
+            else split_text(doc.text, chunk_size, chunk_overlap)
+        )
+        for index, text in enumerate(texts):
             chunks.append(
                 Chunk(
                     id=f"{prefix}::c{index}",
