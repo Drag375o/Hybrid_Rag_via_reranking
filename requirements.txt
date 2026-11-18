@@ -1,0 +1,27 @@
+# Configuration
+pydantic>=2.7
+pydantic-settings>=2.4
+
+# Document loading
+pypdf>=4.3
+python-docx>=1.1
+
+# Retrieval & reranking
+sentence-transformers>=3.0
+chromadb>=0.5.5
+rank-bm25>=0.2.2
+
+# Generation
+ollama>=0.3.3
+
+# UI
+streamlit>=1.38
+
+# Evaluation (benchmark datasets from the Hugging Face Hub)
+datasets>=2.20
+
+# Development
+pytest>=8.3
+
+# Install this project itself (src/hybrid_rag) in editable mode
+-e .

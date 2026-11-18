@@ -118,9 +118,15 @@ pip install -r requirements.txt
 
 # 4. Pull the local LLM
 ollama pull qwen2.5:7b
+
+# 5. (Optional) Override default settings
+cp .env.example .env
+
+# 6. Check that everything is installed correctly
+pytest
 ```
 
-The embedding and reranker models download automatically from Hugging Face on first run.
+The embedding and reranker models download automatically from Hugging Face on first run. Every setting (models, chunk size, top-k values) is defined in `src/hybrid_rag/config.py` and can be overridden with a `RAG_`-prefixed environment variable or in `.env`.
 
 ### Usage
 
@@ -159,7 +165,7 @@ Results will be published here once the harness is complete.
 ## Roadmap
 
 - [x] Project plan and README
-- [ ] Project scaffold (config, dependencies, `.gitignore`)
+- [x] Project scaffold (config, dependencies, `.gitignore`)
 - [ ] Document ingestion and chunking
 - [ ] Dense index (ChromaDB + bge embeddings)
 - [ ] Sparse index (BM25)
