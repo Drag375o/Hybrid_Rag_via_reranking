@@ -45,3 +45,22 @@ class ScoredChunk:
     sparse_score: float | None = None
     retrieval_rank: int | None = None
     rerank_score: float | None = None
+
+
+@dataclass
+class Answer:
+    """A generated answer and the passages it was grounded in.
+
+    ``sources`` are numbered 1..n in the order they were shown to the LLM, and
+    ``cited`` lists the numbers the answer actually referenced, e.g. ``[1, 3]``.
+    """
+
+    question: str
+    text: str
+    sources: list[ScoredChunk]
+    cited: list[int]
+    model: str
+
+    @property
+    def cited_sources(self) -> list[ScoredChunk]:
+        return [self.sources[n - 1] for n in self.cited]

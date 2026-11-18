@@ -32,8 +32,15 @@ class Settings(BaseSettings):
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     reranker_batch_size: int = Field(default=16, gt=0)
     reranker_max_length: int = Field(default=512, gt=0)  # tokens per (query, chunk) pair
-    llm_model: str = "qwen2.5:7b"
+    # Small enough (~1 GB) to download and run quickly on CPU. Larger models such as
+    # "qwen2.5:3b" or "qwen2.5:7b" write better answers if you can download/run them.
+    llm_model: str = "qwen2.5:1.5b"
     ollama_host: str = "http://localhost:11434"
+    llm_temperature: float = Field(default=0.1, ge=0)  # low = stick closely to the sources
+    llm_num_ctx: int = Field(default=8192, gt=0)  # context window in tokens
+    # A citation counts as supported if the cited passage contains at least this
+    # share of the sentence's content words
+    citation_min_support: float = Field(default=0.5, ge=0, le=1)
     device: Literal["auto", "cpu", "cuda"] = "auto"
 
     # --- Chunking (sizes in characters) ---
@@ -49,6 +56,11 @@ class Settings(BaseSettings):
     sparse_weight: float = Field(default=1.0, ge=0)
     fusion_top_k: int = Field(default=50, gt=0)
     rerank_top_k: int = Field(default=5, gt=0)
+    # If even the best reranked passage scores below this, answer "not found" without
+    # calling the LLM (stops small models answering from their own knowledge).
+    # Calibrated for the MiniLM reranker, where off-topic questions score ~0.0000 and
+    # answerable ones >= ~0.03. Set to 0 to disable; re-check it if you change models.
+    min_relevance: float = Field(default=0.01, ge=0, le=1)
 
     # --- Storage ---
     data_dir: Path = PROJECT_ROOT / "data"

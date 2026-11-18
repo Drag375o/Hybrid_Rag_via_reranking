@@ -49,6 +49,8 @@ flowchart TD
 
 4. **Reranking**: Score each (question, chunk) pair with a cross-encoder and keep the top results.
 5. **Generation**: Prompt the local LLM to answer **only** from the reranked context and cite its sources.
+   - **Relevance gate**: if no passage scores above `min_relevance` with the reranker, the system answers "not found" without calling the LLM, so small models can't answer from their own knowledge.
+   - **Citation check**: each answer sentence is compared with the passage it cites. Citations whose passage shares too few of the sentence's words are flagged, together with the best-matching passage. Small models like the default `qwen2.5:1.5b` sometimes cite the wrong passage or forget to cite; larger models cite more reliably.
 
 ---
 
@@ -61,7 +63,7 @@ flowchart TD
 | Keyword search | [`rank_bm25`](https://github.com/dorianbrown/rank_bm25) | Classic BM25 lexical retrieval |
 | Fusion | Reciprocal Rank Fusion | Merges the dense and sparse rankings |
 | Reranker | [`cross-encoder/ms-marco-MiniLM-L-6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (swap in [`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base) for higher accuracy) | Precise relevance scoring |
-| LLM | [Ollama](https://ollama.com/) (default `qwen2.5:7b`) | Writes the final answer |
+| LLM | [Ollama](https://ollama.com/) (default `qwen2.5:1.5b`; `qwen2.5:3b` or `qwen2.5:7b` give better answers if your hardware allows) | Writes the final answer |
 | UI | [Streamlit](https://streamlit.io/) | Chat interface with pipeline inspection |
 | Evaluation | [BEIR](https://github.com/beir-cellar/beir) benchmark (default: SciFact) | Measures retrieval quality |
 
@@ -97,7 +99,7 @@ Hybrid_Rag_via_reranking/
 
 - **Python 3.11+**
 - **[Ollama](https://ollama.com/download)** installed and running
-- About 8 GB of RAM (16 GB recommended) and about 6 GB of free disk space for models
+- About 8 GB of RAM (16 GB recommended) and about 2 GB of free disk space for models
 
 ### Installation
 
@@ -117,7 +119,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Pull the local LLM
-ollama pull qwen2.5:7b
+ollama pull qwen2.5:1.5b
 
 # 5. (Optional) Override default settings
 cp .env.example .env
@@ -143,6 +145,9 @@ python -m hybrid_rag.retrieval "your question" --mode hybrid   # or: dense | spa
 
 # Add the cross-encoder reranker and see how far each chunk moved
 python -m hybrid_rag.retrieval "your question" --rerank
+
+# Ask a question and get a cited answer from the local LLM
+python -m hybrid_rag "your question"
 ```
 
 > The commands below will work once the corresponding roadmap items are complete.
@@ -183,7 +188,7 @@ Results will be published here once the harness is complete.
 - [x] Sparse index (BM25)
 - [x] Hybrid retrieval with Reciprocal Rank Fusion
 - [x] Cross-encoder reranking
-- [ ] Answer generation with Ollama and citations
+- [x] Answer generation with Ollama and citations
 - [ ] Streamlit UI with pipeline inspection
 - [ ] Evaluation harness on a BEIR benchmark
 - [ ] Results and analysis
