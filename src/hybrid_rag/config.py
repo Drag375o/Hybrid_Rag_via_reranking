@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     dense_top_k: int = Field(default=50, gt=0)
     sparse_top_k: int = Field(default=50, gt=0)
     rrf_k: int = Field(default=60, gt=0)
+    # Relative trust in each retriever when fusing (1.0 / 1.0 = classic, unweighted RRF)
+    dense_weight: float = Field(default=1.0, ge=0)
+    sparse_weight: float = Field(default=1.0, ge=0)
     fusion_top_k: int = Field(default=50, gt=0)
     rerank_top_k: int = Field(default=5, gt=0)
 

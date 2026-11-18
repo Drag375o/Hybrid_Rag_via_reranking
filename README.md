@@ -137,6 +137,9 @@ python -m hybrid_rag.ingestion --show 3
 # Build the dense (ChromaDB) and BM25 indexes from data/docs
 # (re-run after adding or changing documents; it rebuilds from scratch)
 python -m scripts.ingest
+
+# Search from the terminal and see each result's rank in the dense and BM25 lists
+python -m hybrid_rag.retrieval "your question" --mode hybrid   # or: dense | sparse
 ```
 
 > The commands below will work once the corresponding roadmap items are complete.
@@ -175,7 +178,7 @@ Results will be published here once the harness is complete.
 - [x] Document ingestion and chunking
 - [x] Dense index (ChromaDB + bge embeddings)
 - [x] Sparse index (BM25)
-- [ ] Hybrid retrieval with Reciprocal Rank Fusion
+- [x] Hybrid retrieval with Reciprocal Rank Fusion
 - [ ] Cross-encoder reranking
 - [ ] Answer generation with Ollama and citations
 - [ ] Streamlit UI with pipeline inspection

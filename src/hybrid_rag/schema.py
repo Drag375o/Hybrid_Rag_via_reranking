@@ -24,3 +24,20 @@ class Chunk:
     page: int | None
     chunk_index: int  # position of this chunk within its Document
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ScoredChunk:
+    """A retrieved Chunk plus the evidence for why it was retrieved.
+
+    ``score`` is whatever ordered the final list (RRF score in hybrid mode, cosine
+    similarity in dense mode, BM25 score in sparse mode). Ranks are 1-based and
+    None when that retriever did not return the chunk.
+    """
+
+    chunk: Chunk
+    score: float
+    dense_rank: int | None = None
+    dense_score: float | None = None
+    sparse_rank: int | None = None
+    sparse_score: float | None = None
