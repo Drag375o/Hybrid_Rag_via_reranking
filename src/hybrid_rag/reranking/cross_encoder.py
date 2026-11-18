@@ -49,9 +49,9 @@ def rerank(
     reranker: Reranker,
     query: str,
     candidates: list[ScoredChunk],
-    top_k: int,
+    top_k: int | None,
 ) -> list[ScoredChunk]:
-    """Re-order candidates by cross-encoder relevance and keep the best ``top_k``.
+    """Re-order candidates by cross-encoder relevance and keep the best ``top_k`` (None = all).
 
     Returns copies with ``rerank_score`` filled in; the inputs are left untouched.
     """

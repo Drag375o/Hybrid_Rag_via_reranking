@@ -69,23 +69,25 @@ flowchart TD
 
 ---
 
-## Project structure (planned)
+## Project structure
 
 ```
 Hybrid_Rag_via_reranking/
 ├── src/hybrid_rag/
 │   ├── config.py            # Central settings (models, top-k, paths)
+│   ├── schema.py            # Shared data types (Document, Chunk, ScoredChunk, Answer)
 │   ├── ingestion/           # Document loaders and chunking
 │   ├── indexing/            # Dense (ChromaDB) and sparse (BM25) indexes
 │   ├── retrieval/           # Hybrid retrieval + RRF fusion
 │   ├── reranking/           # Cross-encoder reranker
-│   ├── generation/          # Ollama client and prompt templates
-│   └── pipeline.py          # End-to-end RAG pipeline
+│   ├── generation/          # Ollama client, prompts and citation check
+│   ├── pipeline.py          # End-to-end RAG pipeline
+│   └── ui_helpers.py        # Formatting helpers for the UI
 ├── app/
 │   └── streamlit_app.py     # Streamlit UI
-├── eval/                    # Benchmark loading, metrics, experiment runner
+├── eval/                    # Benchmark loading, metrics, experiment runner (planned)
 ├── scripts/                 # CLI helpers (e.g. ingest documents)
-├── tests/                   # Unit tests
+├── tests/                   # Unit tests and Streamlit app tests
 ├── data/                    # Your documents and indexes (git-ignored)
 ├── requirements.txt
 └── README.md
@@ -132,6 +134,24 @@ The embedding and reranker models download automatically from Hugging Face on fi
 
 ### Usage
 
+#### Chat UI
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
+Then open http://localhost:8501. In the sidebar, upload PDF/TXT/MD/DOCX files (or drop them in `data/docs/`) and click **Save & rebuild index**. For every answer, the UI shows:
+
+- the answer, streamed as it is written, with **[n]** citations
+- **citation-check warnings** when a sentence cites a passage that doesn't support it, or has no citation
+- a note when the **relevance gate** stopped an off-topic question before it reached the LLM
+- **Sources**: the passages the LLM was given, with relevance scores
+- **How these passages were chosen**: every candidate's rank in dense search, BM25, fusion and reranking
+
+The sidebar switches between hybrid, dense-only and BM25-only retrieval, turns reranking on or off, and sets how many passages the LLM gets.
+
+#### Command line
+
 ```bash
 # Preview how your documents are loaded and chunked (put them in data/docs/ first)
 python -m hybrid_rag.ingestion --show 3
@@ -150,12 +170,9 @@ python -m hybrid_rag.retrieval "your question" --rerank
 python -m hybrid_rag "your question"
 ```
 
-> The commands below will work once the corresponding roadmap items are complete.
+> Coming soon (see the roadmap):
 
 ```bash
-# Launch the chat UI
-streamlit run app/streamlit_app.py
-
 # Run the retrieval benchmark
 python -m eval.run_eval --dataset scifact
 ```
@@ -189,6 +206,6 @@ Results will be published here once the harness is complete.
 - [x] Hybrid retrieval with Reciprocal Rank Fusion
 - [x] Cross-encoder reranking
 - [x] Answer generation with Ollama and citations
-- [ ] Streamlit UI with pipeline inspection
+- [x] Streamlit UI with pipeline inspection
 - [ ] Evaluation harness on a BEIR benchmark
 - [ ] Results and analysis

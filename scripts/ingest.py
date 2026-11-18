@@ -13,7 +13,7 @@ from pathlib import Path
 
 from hybrid_rag.config import get_settings
 from hybrid_rag.indexing import IndexStore
-from hybrid_rag.ingestion import chunk_documents, load_directory
+from hybrid_rag.ingestion import SUPPORTED_EXTENSIONS
 
 
 def main() -> None:
@@ -23,23 +23,20 @@ def main() -> None:
     parser.add_argument("--collection", default=settings.collection_name)
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    for noisy in ("httpx", "httpcore", "huggingface_hub", "sentence_transformers"):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
+    # Progress is printed below; logging only surfaces problems (e.g. a file that failed to load)
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
 
     started = time.perf_counter()
-    documents = load_directory(args.path)
-    if not documents:
+    if not any(p.suffix.lower() in SUPPORTED_EXTENSIONS for p in args.path.rglob("*")):
         sys.exit(f"No supported documents (.pdf, .txt, .md, .docx) found in {args.path}")
-    chunks = chunk_documents(documents)
-    print(f"Loaded {len(documents)} documents -> {len(chunks)} chunks")
 
     print(f"Loading embedding model {settings.embedding_model} ...")
     store = IndexStore(args.collection)
-    print("Embedding and indexing ...")
-    store.build(chunks)
+    print("Loading, chunking, embedding and indexing ...")
+    stats = store.build_from_folder(args.path)
 
     elapsed = time.perf_counter() - started
+    print(f"Loaded {stats.files} files ({stats.documents} documents) -> {stats.chunks} chunks")
     print(
         f"Done in {elapsed:.1f}s: collection '{store.name}' has {store.dense.count()} dense "
         f"and {store.sparse.count()} BM25 entries in {settings.index_dir / store.name}"

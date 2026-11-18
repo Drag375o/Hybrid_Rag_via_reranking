@@ -44,6 +44,25 @@ class FakeReranker:
         ]
 
 
+class FakeOllamaClient:
+    """Streams a canned reply word by word, or raises a configured error."""
+
+    def __init__(self, reply="", error=None):
+        self.reply, self.error = reply, error
+        self.calls = []
+
+    def chat(self, model, messages, options, stream):
+        self.calls.append({"model": model, "messages": messages, "options": options})
+        if self.error:
+            raise self.error
+        return self._stream()
+
+    def _stream(self):
+        words = self.reply.split(" ")
+        for i, word in enumerate(words):
+            yield {"message": {"content": word if i == len(words) - 1 else word + " "}}
+
+
 def make_chunk(chunk_id: str, text: str, page: int | None = None, **metadata) -> Chunk:
     source = chunk_id.split("::")[0]
     return Chunk(id=chunk_id, text=text, source=source, page=page, chunk_index=0, metadata=metadata)

@@ -1,5 +1,8 @@
 """Keep the dense and sparse indexes for one collection in sync."""
 
+from dataclasses import dataclass
+from pathlib import Path
+
 from hybrid_rag.config import Settings, get_settings
 from hybrid_rag.indexing.dense import DenseIndex
 from hybrid_rag.indexing.embeddings import Embedder, SentenceTransformerEmbedder
@@ -51,3 +54,21 @@ class IndexStore:
 
     def get_chunks(self, ids: list[str]) -> list[Chunk]:
         return self.dense.get(ids)
+
+    def build_from_folder(self, folder: Path) -> "FolderStats":
+        """Load, chunk and index every supported file in a folder (replaces the collection)."""
+        from hybrid_rag.ingestion import chunk_documents, load_directory
+
+        documents = load_directory(folder)
+        chunks = chunk_documents(documents, self.settings.chunk_size, self.settings.chunk_overlap)
+        self.build(chunks)
+        return FolderStats(
+            files=len({d.source for d in documents}), documents=len(documents), chunks=len(chunks)
+        )
+
+
+@dataclass
+class FolderStats:
+    files: int
+    documents: int  # PDFs count one per page
+    chunks: int

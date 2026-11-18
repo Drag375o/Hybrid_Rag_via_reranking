@@ -1,7 +1,7 @@
 import ollama
 import pytest
 
-from conftest import make_chunk
+from conftest import FakeOllamaClient, make_chunk
 from hybrid_rag.generation import (
     NO_ANSWER,
     GenerationError,
@@ -12,25 +12,6 @@ from hybrid_rag.generation import (
 from hybrid_rag.indexing import IndexStore
 from hybrid_rag.pipeline import RAGPipeline
 from hybrid_rag.schema import ScoredChunk
-
-
-class FakeOllamaClient:
-    """Streams a canned reply word by word, or raises a configured error."""
-
-    def __init__(self, reply="", error=None):
-        self.reply, self.error = reply, error
-        self.calls = []
-
-    def chat(self, model, messages, options, stream):
-        self.calls.append({"model": model, "messages": messages, "options": options})
-        if self.error:
-            raise self.error
-        return self._stream()
-
-    def _stream(self):
-        words = self.reply.split(" ")
-        for i, word in enumerate(words):
-            yield {"message": {"content": word if i == len(words) - 1 else word + " "}}
 
 
 def source(chunk_id: str, text: str, page: int | None = None) -> ScoredChunk:
