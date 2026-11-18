@@ -91,6 +91,19 @@ class DenseIndex:
             for chunk_id, distance in zip(result["ids"][0], result["distances"][0])
         ]
 
+    def all_chunks(self, batch_size: int = 5000) -> list[Chunk]:
+        """Every stored chunk (text and metadata, no embeddings), in pages."""
+        chunks: list[Chunk] = []
+        for offset in range(0, self.count(), batch_size):
+            page = self._collection.get(
+                include=["documents", "metadatas"], limit=batch_size, offset=offset
+            )
+            chunks.extend(
+                _from_record(chunk_id, text, metadata)
+                for chunk_id, text, metadata in zip(page["ids"], page["documents"], page["metadatas"])
+            )
+        return chunks
+
     def get(self, ids: list[str]) -> list[Chunk]:
         """Fetch chunks by id, in the order requested (unknown ids are skipped)."""
         if not ids:

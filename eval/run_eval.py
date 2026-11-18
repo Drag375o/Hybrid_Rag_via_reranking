@@ -181,7 +181,7 @@ def main() -> None:
             "chunks": store.count(),
             "date": date.today().isoformat(),
             **{key: getattr(settings, key) for key in (
-                "embedding_model", "reranker_model", "chunk_size", "chunk_overlap", "chunk_title_prefix",
+                "embedding_model", "reranker_model", "chunk_size", "chunk_overlap", "chunk_title_prefix", "bm25_stemming",
                 "dense_top_k", "sparse_top_k", "rrf_k", "fusion_top_k",
             )},
         }

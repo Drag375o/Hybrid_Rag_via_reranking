@@ -1,5 +1,6 @@
 """Keep the dense and sparse indexes for one collection in sync."""
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from hybrid_rag.indexing.dense import DenseIndex
 from hybrid_rag.indexing.embeddings import Embedder, SentenceTransformerEmbedder
 from hybrid_rag.indexing.sparse import BM25Index
 from hybrid_rag.schema import Chunk
+
+logger = logging.getLogger(__name__)
 
 
 class IndexStore:
@@ -28,7 +31,13 @@ class IndexStore:
         self.dense = DenseIndex(
             root / "chroma", self.name, embedder or SentenceTransformerEmbedder(self.settings)
         )
-        self.sparse = BM25Index(root / "bm25.json")
+        self.sparse = BM25Index(root / "bm25.json", stem=self.settings.bm25_stemming)
+        if self.sparse.needs_rebuild:
+            # Tokenizer settings changed since indexing: re-tokenize from the stored chunk
+            # text (seconds, no re-embedding needed)
+            logger.info("Re-tokenizing BM25 index for '%s' with new settings", self.name)
+            self.sparse.reset()
+            self.sparse.add(self.dense.all_chunks())
 
     def count(self) -> int:
         return self.dense.count()

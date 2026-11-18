@@ -21,6 +21,49 @@ def test_tokenize_lowercases_and_drops_stopwords():
     assert tokenize("The Error is 0x80070005 in Windows!") == ["error", "0x80070005", "windows"]
 
 
+def test_tokenize_with_stemming_matches_word_forms():
+    assert tokenize("Vitamins and diabetic studies", stem=True) == ["vitamin", "diabet", "studi"]
+    assert tokenize("Vitamin, diabetes, study", stem=True) == ["vitamin", "diabet", "studi"]
+    assert tokenize("error 0x80070005", stem=True) == ["error", "0x80070005"]  # codes untouched
+
+
+def test_stemmed_bm25_matches_plural_query(tmp_path):
+    plain, stemmed = BM25Index(tmp_path / "plain.json"), BM25Index(tmp_path / "stem.json", stem=True)
+    for index in (plain, stemmed):
+        index.add(CHUNKS)
+    assert plain.search("punctured tires", top_k=1)[0][0] == "bikes.md::c0"  # via "punctured"
+    assert plain.search("tires repaired", top_k=1) == []  # no exact word in common
+    assert stemmed.search("tires repaired", top_k=1)[0][0] == "bikes.md::c0"  # tire/repair roots
+
+
+def test_bm25_file_records_its_tokenizer(tmp_path):
+    path = tmp_path / "bm25.json"
+    BM25Index(path, stem=True).add(CHUNKS)
+
+    assert not BM25Index(path, stem=True).needs_rebuild
+    mismatched = BM25Index(path, stem=False)
+    assert mismatched.needs_rebuild and mismatched.count() == 0
+
+
+def test_store_retokenizes_bm25_when_stemming_setting_changes(tmp_path, fake_embedder):
+    from hybrid_rag.config import Settings
+
+    plain = Settings(_env_file=None, data_dir=tmp_path, bm25_stemming=False)
+    IndexStore("docs", settings=plain, embedder=fake_embedder).build(CHUNKS)
+
+    stemmed = Settings(_env_file=None, data_dir=tmp_path, bm25_stemming=True)
+    store = IndexStore("docs", settings=stemmed, embedder=fake_embedder)
+
+    assert store.sparse.count() == len(CHUNKS) and not store.sparse.needs_rebuild
+    assert store.sparse.search("tires repaired", top_k=1)[0][0] == "bikes.md::c0"
+
+
+def test_dense_all_chunks_pages_through_everything(store):
+    chunks = store.dense.all_chunks(batch_size=2)
+    assert sorted(c.id for c in chunks) == sorted(c.id for c in CHUNKS)
+    assert next(c for c in chunks if c.id == "errors.pdf::p2::c0").page == 2
+
+
 def test_bm25_finds_exact_code(tmp_path):
     index = BM25Index(tmp_path / "bm25.json")
     index.add(CHUNKS)

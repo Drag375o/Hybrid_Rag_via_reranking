@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     chunk_title_prefix: bool = True
 
     # --- Retrieval ---
+    # Reduce words to their root in BM25 ("vitamins" -> "vitamin"); existing BM25
+    # indexes are re-tokenized automatically when this changes
+    bm25_stemming: bool = True
     dense_top_k: int = Field(default=50, gt=0)
     sparse_top_k: int = Field(default=50, gt=0)
     rrf_k: int = Field(default=60, gt=0)

@@ -4,7 +4,9 @@ A fully local, free-to-run **Retrieval-Augmented Generation (RAG)** system that 
 
 It comes with a **Streamlit UI** that shows each step of the pipeline, and an **evaluation harness** that measures how much each stage contributes.
 
-> **Status:** 🚧 Work in progress. See the [Roadmap](#roadmap) for what is implemented so far.
+**Results in brief:** on two BEIR benchmarks, hybrid search beats dense search alone (nDCG@10 0.731 vs 0.717 on SciFact, 0.366 vs 0.348 on NFCorpus). The small CPU-friendly reranker did not improve on hybrid search further. See [Evaluation](#evaluation) for the numbers and what changed them.
+
+> **Status:** All core features are implemented, tested and benchmarked. See the [Roadmap](#roadmap) for open experiments.
 
 ---
 
@@ -17,7 +19,7 @@ It comes with a **Streamlit UI** that shows each step of the pipeline, and an **
 | **Hybrid (RRF)** | Combines the strengths of both | Its ranking is still approximate |
 | **+ Cross-encoder reranker** | Reads the query and each passage together for precise relevance scoring | Too slow to run on the whole corpus, so it only scores the shortlist |
 
-Retrieval stays fast because the cheap retrievers cast a wide net (~50 candidates), and answers stay accurate because the expensive reranker only scores that shortlist to pick the best ~5.
+Retrieval stays fast because the cheap retrievers cast a wide net (~50 candidates), and the expensive reranker only re-scores that shortlist to pick the best ~5. How much the reranker adds depends on the model: the [evaluation](#evaluation) shows hybrid search helping clearly, while the small default reranker didn't improve on it.
 
 ---
 
@@ -186,7 +188,7 @@ The evaluation harness compares four retrieval setups on the same benchmark so t
 | Dense only | Embedding search |
 | BM25 only | Keyword search |
 | Hybrid | Dense + BM25 fused with RRF |
-| **Hybrid + Rerank** | Hybrid, then the cross-encoder reranker |
+| Hybrid + rerank | Hybrid, then the cross-encoder reranker |
 
 **Metrics:**
 - **nDCG@10**: are the relevant documents near the top of the first 10? This is the main metric.
@@ -195,75 +197,63 @@ The evaluation harness compares four retrieval setups on the same benchmark so t
 
 Documents are chunked and indexed exactly like your own files. Each ranked chunk list is then collapsed into a document ranking, where a document takes the position of its best chunk.
 
-### Results: BEIR SciFact (300 test questions, 5,183 documents)
+### Results
 
-Run on a CPU-only laptop with `bge-small-en-v1.5` embeddings, the `ms-marco-MiniLM-L-6-v2` reranker and 800-character chunks, with each chunk starting with its paper's title (the default):
+Run on a CPU-only laptop with `bge-small-en-v1.5` embeddings, the `ms-marco-MiniLM-L-6-v2` reranker, 800-character chunks that each start with their paper's title, and BM25 with stemming (all defaults).
+
+**BEIR SciFact**: 300 scientific claims, 5,183 paper abstracts
 
 | Setup | nDCG@10 | MRR@10 | Recall@5 | Recall@10 | ms / query |
 |---|---|---|---|---|---|
-| Dense only | 0.717 | 0.685 | 0.761 | 0.842 | 28 |
-| BM25 only | 0.642 | 0.607 | 0.719 | 0.773 | 54 |
-| Hybrid (RRF) | 0.716 | 0.686 | 0.770 | 0.836 | 80 |
-| **Hybrid + rerank** | **0.726** | **0.696** | **0.779** | **0.850** | 1029 |
+| Dense only | 0.717 | 0.685 | 0.761 | 0.842 | 20 |
+| BM25 only | 0.684 | 0.650 | 0.752 | 0.809 | 62 |
+| **Hybrid (RRF)** | **0.731** | **0.701** | **0.800** | **0.849** | 54 |
+| Hybrid + rerank | 0.724 | 0.694 | 0.774 | **0.849** | 955 |
 
-Full output and configuration: [`eval/results/scifact_test.md`](eval/results/scifact_test.md).
+**BEIR NFCorpus**: 323 plain-language nutrition and health questions, 3,633 medical abstracts full of specialist terms
 
-#### Effect of putting the title on every chunk (nDCG@10)
+| Setup | nDCG@10 | MRR@10 | Recall@5 | Recall@10 | ms / query |
+|---|---|---|---|---|---|
+| Dense only | 0.348 | 0.536 | 0.129 | 0.164 | 20 |
+| BM25 only | 0.323 | 0.527 | 0.132 | 0.157 | 11 |
+| **Hybrid (RRF)** | **0.366** | 0.571 | 0.137 | **0.178** | 32 |
+| Hybrid + rerank | 0.362 | **0.579** | **0.138** | 0.169 | 845 |
 
-Most SciFact abstracts are longer than one chunk. Without a title header, every chunk after the first reaches the embedder and the reranker with no indication of which paper it comes from.
+Full output and configuration: [`eval/results/scifact_test.md`](eval/results/scifact_test.md), [`eval/results/nfcorpus_test.md`](eval/results/nfcorpus_test.md).
 
-| Setup | Title on first chunk only | Title on every chunk | Change |
-|---|---|---|---|
-| Dense only | 0.713 | 0.717 | +0.004 |
-| BM25 only | 0.631 | 0.642 | +0.011 |
-| Hybrid (RRF) | 0.711 | 0.716 | +0.005 |
-| Hybrid + rerank | 0.696 | **0.726** | **+0.030** |
+### How each change affected nDCG@10
 
-Earlier results without the title header: [`eval/results/scifact_test_no_title_prefix.md`](eval/results/scifact_test_no_title_prefix.md).
+The pipeline was improved in steps, with every step measured on the full benchmarks:
+
+| Setup | SciFact: first version | + title on every chunk | + BM25 stemming | NFCorpus: before stemming | + BM25 stemming |
+|---|---|---|---|---|---|
+| Dense only | 0.713 | 0.717 | 0.717 | 0.348 | 0.348 |
+| BM25 only | 0.631 | 0.642 | **0.684** | 0.299 | **0.323** |
+| Hybrid (RRF) | 0.711 | 0.716 | **0.731** | 0.355 | **0.366** |
+| Hybrid + rerank | 0.696 | **0.726** | 0.724 | 0.359 | 0.362 |
+
+- **Title on every chunk**: most abstracts span more than one chunk. Without a title header, later chunks reach the embedder and reranker with no indication of which paper they come from. The reranker, which judges one chunk at a time, gained the most (+0.030).
+- **BM25 stemming**: reducing words to their roots ("vitamins" → "vitamin", "diabetic"/"diabetes" → "diabet") lifted keyword search by +0.042 and +0.024. On NFCorpus it now matches the published BEIR BM25 baseline (0.325, from Elasticsearch).
+
+The first-version results are kept in [`eval/results/scifact_test_no_title_prefix.md`](eval/results/scifact_test_no_title_prefix.md). Results before stemming are in the git history.
 
 ### What the results show
 
-- **The cross-encoder benefits most from context.** Without the title header, the reranker made results *worse* than hybrid search (0.696 vs 0.711). With the title on every chunk, it is the best setup (0.726). The cross-encoder judges one chunk at a time, so a chunk that has lost its title is hard for it to place.
-- **Hybrid search adds little on SciFact.** SciFact pairs scientific claims with paper abstracts that usually paraphrase them, which is what embeddings handle well. BM25 is clearly weaker here (0.642 vs 0.717), so fusing it in leaves hybrid level with dense. Giving dense search 1.5×–3× more weight in the fusion changed nDCG@10 by less than 0.01.
-- **The gains are small, and reranking is expensive.** Hybrid + rerank beats dense alone by 0.009 nDCG@10. On 300 questions, a gap that size may not be statistically meaningful, and the reranker makes each query about 13× slower (1029 vs 80 ms).
-- **Where hybrid search does help**: queries that hinge on exact strings like error codes, IDs, version numbers and rare names. In a spot check on this README, "Error 0x80070005" was ranked 3rd by dense search and 1st by hybrid. SciFact has few such queries, so it understates this benefit.
-
-### Results: BEIR NFCorpus (323 test questions, 3,633 documents)
-
-NFCorpus asks plain-language nutrition and health questions against medical paper abstracts full of specialist terms (drug names, conditions, nutrients). Unlike SciFact, BM25 and dense search are much closer here, which is when fusing them should pay off. Same settings as above:
-
-| Setup | nDCG@10 | MRR@10 | Recall@5 | Recall@10 | ms / query |
-|---|---|---|---|---|---|
-| Dense only | 0.348 | 0.536 | 0.129 | 0.164 | 18 |
-| BM25 only | 0.299 | 0.499 | 0.126 | 0.149 | 20 |
-| Hybrid (RRF) | 0.355 | 0.560 | 0.135 | **0.176** | 35 |
-| **Hybrid + rerank** | **0.359** | **0.578** | **0.138** | 0.167 | 1006 |
-
-Full output: [`eval/results/nfcorpus_test.md`](eval/results/nfcorpus_test.md).
-
-- **Here each stage helps.** Hybrid improves on dense alone in every metric (nDCG@10 +0.007, MRR@10 +0.024, Recall@10 +0.012), and reranking adds a little more at the top (MRR@10 0.578, the best). The gains are modest, but unlike SciFact they point consistently in the same direction.
-- **Low recall scores are expected on this dataset.** NFCorpus questions have dozens of relevant documents each, so even a perfect top 10 can only contain a small share of them.
-- **Our BM25 is a simple one.** It doesn't stem words (so "vitamins" won't match "vitamin"), which probably explains why it trails the published BEIR BM25 baseline (about 0.33 nDCG@10, from Elasticsearch with stemming). A stronger BM25 would likely make hybrid search more useful.
-
-### Overall
-
-| | SciFact nDCG@10 | NFCorpus nDCG@10 |
-|---|---|---|
-| Dense only | 0.717 | 0.348 |
-| Hybrid (RRF) | 0.716 | 0.355 |
-| **Hybrid + rerank** | **0.726** | **0.359** |
-
-Hybrid + rerank is the best setup on both benchmarks, but by small margins (+0.009 and +0.011 over dense alone), and the reranker makes each query 13–29× slower. When BM25 is much weaker than dense search (SciFact), fusion adds nothing. When the two are closer (NFCorpus), it helps.
+- **Hybrid search is the best setup on both benchmarks.** It beats dense search alone by +0.014 (SciFact) and +0.018 (NFCorpus) nDCG@10, and still answers in about 30–55 ms. Fusion only paid off once BM25 was strong enough: with the unstemmed BM25 it added nothing on SciFact. Changing the fusion weights mattered far less (less than 0.01 for 1.5×–3× more weight on dense, measured before stemming).
+- **The small MiniLM reranker doesn't earn its cost here.** Once hybrid search is strong, reranking leaves nDCG@10 slightly lower (−0.007 and −0.004) and makes each query 18–26× slower. It does give the best MRR@10 on NFCorpus (+0.008), meaning the first relevant document appears slightly higher. MiniLM was trained on web-search queries. A stronger reranker such as `bge-reranker-base` is the obvious next test. In the app, reranking also powers the relevance gate that refuses off-topic questions, so it stays on by default.
+- **The differences are small.** Gaps of about 0.01 on roughly 300 questions may not be statistically significant, so treat these as tendencies, not guarantees.
+- **Low recall scores are expected on NFCorpus.** Its questions have dozens of relevant documents each, so even a perfect top 10 can only contain a small share of them.
+- **Where hybrid search helps most**: queries that hinge on exact strings like error codes, IDs, version numbers and rare names. In a spot check on this README, "Error 0x80070005" was ranked 3rd by dense search and 1st by hybrid. Neither benchmark has many such queries.
 
 **Next experiments:**
-- Stemming in BM25.
 - A stronger reranker (`BAAI/bge-reranker-base`).
+- Fusing more candidates before reranking.
 
 Reproduce with:
 
 ```bash
 python -m eval.run_eval                       # SciFact, all 300 questions (~6 min after a one-time ~8 min indexing)
-python -m eval.run_eval --dataset nfcorpus    # NFCorpus, all 323 questions (~6 min after ~7 min indexing)
+python -m eval.run_eval --dataset nfcorpus    # NFCorpus, all 323 questions (~5 min after ~7 min indexing)
 python -m eval.run_eval --limit 50            # quick check
 python -m eval.run_eval --rebuild             # re-index after changing chunking or models
 ```
@@ -287,5 +277,5 @@ Only full runs are meaningful. Small samples swing a lot: in a 20-question trial
 - [x] Results and analysis (SciFact)
 - [x] Title header on every chunk
 - [x] Second benchmark (NFCorpus)
-- [ ] Stemming in BM25
+- [x] Stemming in BM25
 - [ ] Stronger reranker (`bge-reranker-base`)

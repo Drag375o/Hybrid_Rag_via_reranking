@@ -2,10 +2,10 @@
 
 | Setup | nDCG@10 | MRR@10 | Recall@5 | Recall@10 | ms / query |
 |---|---|---|---|---|---|
-| dense | 0.348 | 0.536 | 0.129 | 0.164 | 18 |
-| bm25 | 0.299 | 0.499 | 0.126 | 0.149 | 20 |
-| hybrid | 0.355 | 0.560 | 0.135 | 0.176 | 35 |
-| **hybrid+rerank** | 0.359 | 0.578 | 0.138 | 0.167 | 1006 |
+| dense | 0.348 | 0.536 | 0.129 | 0.164 | 20 |
+| bm25 | 0.323 | 0.527 | 0.132 | 0.157 | 11 |
+| **hybrid** | 0.366 | 0.571 | 0.137 | 0.178 | 32 |
+| hybrid+rerank | 0.362 | 0.579 | 0.138 | 0.169 | 845 |
 
 ## Configuration
 
@@ -20,6 +20,7 @@
 - chunk_size: `800`
 - chunk_overlap: `120`
 - chunk_title_prefix: `True`
+- bm25_stemming: `True`
 - dense_top_k: `50`
 - sparse_top_k: `50`
 - rrf_k: `60`
