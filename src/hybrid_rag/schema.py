@@ -30,9 +30,11 @@ class Chunk:
 class ScoredChunk:
     """A retrieved Chunk plus the evidence for why it was retrieved.
 
-    ``score`` is whatever ordered the final list (RRF score in hybrid mode, cosine
-    similarity in dense mode, BM25 score in sparse mode). Ranks are 1-based and
-    None when that retriever did not return the chunk.
+    ``score`` is the retrieval score (RRF score in hybrid mode, cosine similarity
+    in dense mode, BM25 score in sparse mode). Ranks are 1-based and None when
+    that stage did not see the chunk. After reranking, ``rerank_score`` (0-1
+    relevance) decides the order and ``retrieval_rank`` keeps the position the
+    chunk had before reranking.
     """
 
     chunk: Chunk
@@ -41,3 +43,5 @@ class ScoredChunk:
     dense_score: float | None = None
     sparse_rank: int | None = None
     sparse_score: float | None = None
+    retrieval_rank: int | None = None
+    rerank_score: float | None = None

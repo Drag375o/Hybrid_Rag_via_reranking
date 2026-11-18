@@ -30,6 +30,20 @@ class FakeEmbedder:
         return self._embed(text)
 
 
+class FakeReranker:
+    """Scores a passage by the share of query words it contains; records its calls."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def score(self, query, passages):
+        self.calls += 1
+        query_tokens = set(tokenize(query))
+        return [
+            len(query_tokens & set(tokenize(p))) / (len(query_tokens) or 1) for p in passages
+        ]
+
+
 def make_chunk(chunk_id: str, text: str, page: int | None = None, **metadata) -> Chunk:
     source = chunk_id.split("::")[0]
     return Chunk(id=chunk_id, text=text, source=source, page=page, chunk_index=0, metadata=metadata)
@@ -43,3 +57,8 @@ def settings(tmp_path):
 @pytest.fixture
 def fake_embedder():
     return FakeEmbedder()
+
+
+@pytest.fixture
+def fake_reranker():
+    return FakeReranker()

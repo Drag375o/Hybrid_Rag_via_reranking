@@ -60,7 +60,7 @@ flowchart TD
 | Vector store | [ChromaDB](https://www.trychroma.com/) (persistent, on disk) | Stores and searches embeddings |
 | Keyword search | [`rank_bm25`](https://github.com/dorianbrown/rank_bm25) | Classic BM25 lexical retrieval |
 | Fusion | Reciprocal Rank Fusion | Merges the dense and sparse rankings |
-| Reranker | [`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base) cross-encoder | Precise relevance scoring |
+| Reranker | [`cross-encoder/ms-marco-MiniLM-L-6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (swap in [`BAAI/bge-reranker-base`](https://huggingface.co/BAAI/bge-reranker-base) for higher accuracy) | Precise relevance scoring |
 | LLM | [Ollama](https://ollama.com/) (default `qwen2.5:7b`) | Writes the final answer |
 | UI | [Streamlit](https://streamlit.io/) | Chat interface with pipeline inspection |
 | Evaluation | [BEIR](https://github.com/beir-cellar/beir) benchmark (default: SciFact) | Measures retrieval quality |
@@ -140,6 +140,9 @@ python -m scripts.ingest
 
 # Search from the terminal and see each result's rank in the dense and BM25 lists
 python -m hybrid_rag.retrieval "your question" --mode hybrid   # or: dense | sparse
+
+# Add the cross-encoder reranker and see how far each chunk moved
+python -m hybrid_rag.retrieval "your question" --rerank
 ```
 
 > The commands below will work once the corresponding roadmap items are complete.
@@ -179,7 +182,7 @@ Results will be published here once the harness is complete.
 - [x] Dense index (ChromaDB + bge embeddings)
 - [x] Sparse index (BM25)
 - [x] Hybrid retrieval with Reciprocal Rank Fusion
-- [ ] Cross-encoder reranking
+- [x] Cross-encoder reranking
 - [ ] Answer generation with Ollama and citations
 - [ ] Streamlit UI with pipeline inspection
 - [ ] Evaluation harness on a BEIR benchmark

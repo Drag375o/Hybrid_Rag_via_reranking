@@ -27,7 +27,11 @@ class Settings(BaseSettings):
     # bge models retrieve better when short queries carry this instruction (passages don't)
     embedding_query_prefix: str = "Represent this sentence for searching relevant passages: "
     embedding_batch_size: int = Field(default=32, gt=0)
-    reranker_model: str = "BAAI/bge-reranker-base"
+    # Small and fast on CPU (~90 MB). For higher accuracy at ~10x the size and
+    # CPU time, use "BAAI/bge-reranker-base".
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_batch_size: int = Field(default=16, gt=0)
+    reranker_max_length: int = Field(default=512, gt=0)  # tokens per (query, chunk) pair
     llm_model: str = "qwen2.5:7b"
     ollama_host: str = "http://localhost:11434"
     device: Literal["auto", "cpu", "cuda"] = "auto"

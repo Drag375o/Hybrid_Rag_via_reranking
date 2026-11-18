@@ -59,6 +59,7 @@ class HybridRetriever:
                     dense_score=dense_score,
                     sparse_rank=sparse_rank,
                     sparse_score=sparse_score,
+                    retrieval_rank=len(results) + 1,
                 )
             )
         return results
